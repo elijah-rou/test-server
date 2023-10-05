@@ -15,8 +15,11 @@ use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 
 async fn check_auth(auth: &str) -> Result<(), WebhookError> {
-    let first_7 = &auth[0..8];
-    if first_7 != "Bearer " {
+    if auth.len() < 6 {
+        return Err(WebhookError::Unauthorized);
+    }
+    let first_6 = &auth[0..6];
+    if first_6 != "Bearer" {
         return Ok(());
     } else {
         return Err(WebhookError::Unauthorized);
