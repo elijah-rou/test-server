@@ -9,6 +9,7 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use serde_json::{json, Value};
+use std::env;
 use tower_http::cors::{Any, CorsLayer};
 
 async fn check_auth(auth: &str) -> Result<(), WebhookError> {
@@ -79,7 +80,9 @@ async fn main() -> Result<(), WebhookError> {
                 .allow_headers(Any)
                 .allow_credentials(false),
         );
-    axum::Server::bind(&"0.0.0.0:80".parse().unwrap())
+    let port = env::var("PORT").unwrap_or_else(|_| "80".to_string());
+    let addr = format!("0.0.0.0:{}", port);
+    axum::Server::bind(&addr.parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();
