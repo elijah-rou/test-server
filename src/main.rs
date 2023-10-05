@@ -11,6 +11,8 @@ use axum_macros::debug_handler;
 use serde_json::{json, Value};
 use std::env;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::{self, TraceLayer};
+use tracing::Level;
 
 async fn check_auth(auth: &str) -> Result<(), WebhookError> {
     let first_7 = &auth[0..8];
@@ -69,10 +71,19 @@ impl response::IntoResponse for WebhookError {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), WebhookError> {
+async fn main() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .compact()
+        .init();
     let app = Router::new()
         .route("/health", get(health))
         .route("/:app_name", post(echo_app))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+        )
         .layer(
             CorsLayer::new()
                 .allow_methods(Any)
@@ -82,9 +93,9 @@ async fn main() -> Result<(), WebhookError> {
         );
     let port = env::var("PORT").unwrap_or_else(|_| "80".to_string());
     let addr = format!("0.0.0.0:{}", port);
+    tracing::info!("Listening on {}", addr);
     axum::Server::bind(&addr.parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();
-    return Ok(());
 }
